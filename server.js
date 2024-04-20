@@ -28,15 +28,23 @@ const requestListener = async (req, res) => {
     body += chunk;
   });
 
-  if (req.url == "/posts" && req.method == "GET") {
+  if (req.url === "/posts" && req.method === "GET") {
     const post = await Post.find();
     handleSuccess(res, post);
-  } else if (req.url == "/posts" && req.method == "POST") {
+  } else if (req.url === "/posts" && req.method === "POST") {
     req.on("end", async () => {
       try {
-        const { name, content, image, like, tags } = JSON.parse(body);
+        const { name, content, image, likes, tags } = JSON.parse(body);
         if (content && name && tags.length) {
-          const newPost = await Post.create({ name, content, image, like, tags });
+          const newPost = await Post.create(
+            { 
+              name: typeof name === 'string' ? name.trim() : "",  
+              content: typeof content === 'string' ? content.trim() : "", 
+              image: typeof image === 'string' ? image.trim() : "",
+              likes,
+              tags
+            }
+          );
           handleSuccess(res, newPost);
         } else {
           handleError(res);
@@ -45,28 +53,51 @@ const requestListener = async (req, res) => {
         handleError(res, error);
       }
     });
-  } else if (req.url === "/posts" && req.method == "DELETE") {
+  } else if (req.url === "/posts" && req.method === "DELETE") {
     await Post.deleteMany({});
-    handleSuccess(res, null);
-  } else if (req.url.startsWith("/posts/") && req.method == "DELETE") {
-    const id = req.url.split("/").pop();
-    await Post.findByIdAndDelete(id);
-    handleSuccess(res, null);
-  } else if (req.url.startsWith("/posts/") && req.method == "PATCH") {
-    const post = await Post.find();
-    const id = req.url.split("/").pop();
-    const { name, content, tags, likes, image } = JSON.parse(body);
-    if (id && (name || content || tags.length)) {
-      await Post.findByIdAndUpdate(id, { name, content, tags, likes, image  });
-      handleSuccess(res, post);
-    } else {
-      handleError(res);
+    handleSuccess(res, []);
+  } else if (req.url.startsWith("/posts/") && req.method === "DELETE") {
+    try {
+      const id = req.url.split("/").pop();
+      const findId = await Post.findById(id)
+      if(findId.id) {
+        const deletePost = await Post.findByIdAndDelete(id, {},{
+          new: true,
+        })
+        handleSuccess(res, deletePost);
+      }
+    } catch (error) {
+      handleError(res, error);
     }
-  } else if (req.method == "OPTIONS") {
+  } else if (req.url.startsWith("/posts/") && req.method === "PATCH") {
+    try {
+      const id = req.url.split("/").pop();
+      const findId = await Post.findById(id)
+      const { name, content, tags, likes, image } = JSON.parse(body);
+      if (findId.id && name && content && tags.length) {
+        const updatePost = await Post.findByIdAndUpdate(id, {
+          name: typeof name === 'string' ? name.trim() : "",  
+          content: typeof content === 'string' ? content.trim() : "", 
+          image: typeof image === 'string' ? image.trim() : "",
+          likes, 
+          tags
+        },
+        {
+          new: true,
+        }
+      );
+        handleSuccess(res, updatePost);
+      } else {
+        handleError(res);
+      }
+    } catch (error) {
+      handleError(res, error);
+    }
+  } else if (req.method === "OPTIONS") {
     res.writeHead(200, headers);
     res.end();
   } else {
-    handleError(res);
+    handleError(res, '此路由不存在');
   }
 };
 const server = http.createServer(requestListener);

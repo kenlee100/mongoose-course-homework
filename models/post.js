@@ -10,7 +10,7 @@ const postSchema = new mongoose.Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now(),
+    default: Date.now,
     select: false,
   },
   name: {
@@ -27,6 +27,9 @@ const postSchema = new mongoose.Schema({
       required: [true, '貼文標籤 tags 未填寫']
     }
   ],
+},
+{
+  versionKey: false
 });
 const Post = mongoose.model("post", postSchema);
 
